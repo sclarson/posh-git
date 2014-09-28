@@ -157,16 +157,17 @@ $Global:VcsPromptStatuses += {
 }
 function Global:Clean-MergedBranches {
     param(
+        [string]$branch = 'master',
         [switch]$WhatIf,
         [switch]$Confirm 
     )
 
     $dontcare = git fetch origin --prune
-    $branches = git branch -a --merged |
+    $branches = git branch -a --merged $branch|
     ?{$_ -match "remotes\/origin"} |
-    ?{$_ -notmatch "\/master"} |
+    ?{$_ -notmatch "\/master|$branch"} |
     %{$_.Replace("remotes/origin/", "").Trim() }
- 
+
     if (-not $branches) {
         echo "No merged branches detected"
     }
