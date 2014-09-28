@@ -155,7 +155,12 @@ $Global:VcsPromptStatuses += {
     $Global:GitStatus = Get-GitStatus
     Write-GitStatus $GitStatus
 }
-function Clean-MergedBranches{
+function Global:Clean-MergedBranches {
+    param(
+        [switch]$WhatIf,
+        [switch]$Confirm 
+    )
+
     $dontcare = git fetch origin --prune
     $branches = git branch -a --merged |
     ?{$_ -match "remotes\/origin"} |
@@ -164,26 +169,32 @@ function Clean-MergedBranches{
  
     if (-not $branches) {
         echo "No merged branches detected"
-        exit 0
     }
  
     echo $branches
-
-    $title = "Delete Merged Branches"
-    $message = "Do you want to delete the already-merged remote branches displayed above??"
- 
-    $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", `
-    "Delete the remote branches listed."
- 
-    $no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", `
-    "Leave the branches alone."
-    $options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
- 
-    $result = $host.ui.PromptForChoice($title, $message, $options, 1)
- 
-    if ($result -eq 1) {
-        exit 0
+    if ($WhatIf.IsPresent) {
+        write-host "The already-merged remote branches displayed above would be deleted"
+        return
     }
 
-    $branches | %{ git push origin ":$_" }
+    if (!$Confirm.IsPresent) {
+        $title = "Delete Merged Branches"
+        $message = "Do you want to delete the already-merged remote branches displayed above??"
+ 
+        $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", `
+        "Delete the remote branches listed."
+ 
+        $no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", `
+        "Leave the branches alone."
+        $options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
+ 
+        $result = $host.ui.PromptForChoice($title, $message, $options, 1)
+    }
+
+    if (!$WhatIf.IsPresent -and
+         $branches -and 
+         (($result -ne 1) -or ($Confirm.IsPresent))){
+        Write-Host "Cleaning branches"
+        $branches | %{ git push origin ":$_" }
+    }
 }
